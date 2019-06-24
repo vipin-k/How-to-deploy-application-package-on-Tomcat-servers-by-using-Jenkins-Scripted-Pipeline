@@ -1,0 +1,6 @@
+# Generate SSH Key on master machine and copy key on Compute and Infra
+ssh-keygen
+for host in 192.168.1.72 \
+            192.168.1.73; \
+      do ssh-copy-id -i ~/.ssh/id_rsa.pub $host; \
+done
