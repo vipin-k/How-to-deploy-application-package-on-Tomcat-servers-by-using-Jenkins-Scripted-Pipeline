@@ -1,0 +1,63 @@
+node {
+        def mvnHome
+        mvnHome = tool 'Maven 3.5.2'
+        def servers = ["192.168.1.72","192.168.1.73"]
+        try {
+        stage('Preparation') { // for display purposes Get some code from a GitHub repository
+            git 'https://github.com/vipin-k/spring-framework-petclinic.git'
+            // Get the Maven tool.
+            // ** NOTE: This 'M3' Maven tool must be configured
+            // **       in the global configuration.   
+            }
+        stage('clean') {
+            // Run the maven build
+            sh "'${mvnHome}/bin/mvn' -Dmaven.test.failure.ignore clean"
+            }
+   
+        stage('compile') {
+            // Run the maven build
+            sh "'${mvnHome}/bin/mvn' -Dmaven.test.failure.ignore compile"
+            }
+   
+        stage('testing') {
+            // Run the maven build
+            sh "'${mvnHome}/bin/mvn' -Dmaven.test.failure.ignore test"
+            }
+   
+        stage('packing') {
+            // Run the maven build
+            sh "'${mvnHome}/bin/mvn' -Dmaven.test.failure.ignore package"
+            }
+        stage('Test-Result') {
+            // Run the maven build
+            junit 'target/surefire-reports/*.xml'
+            }
+        for (server in servers)
+        { 
+                stage('Stop Tomcat') {
+                sh "ssh -T 'root@${server}' /opt/apache-tomcat-8.5.31/bin/./shutdown.sh"
+                }
+        
+                stage('War File Deployment') {
+                sh "ssh -T 'root@${server}' rm -f /opt/apache-tomcat-8.5.31/webapps/petclinic.war rm -fr /opt/apache-tomcat-8.5.31/webapps/petclinic"
+                sh "scp target/petclinic.war 'root@${server}':/opt/apache-tomcat-8.5.31/webapps/"
+                }
+                stage('Start Tomcat') {
+                sh "ssh -T 'root@${server}' /opt/apache-tomcat-8.5.31/bin/./startup.sh"
+                }
+        }
+        notify('Sucess')
+        }
+catch (err) {
+notify("Error ${err}")
+CurrentBuid.result = 'FAILURE'
+}
+}
+def notify(status){ 
+    emailext (
+      to: "vipinkumargupta@gmail.com",
+      subject: "${status}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+      body: """<p>${status}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+        <p>Check console output at <a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a></p>""",
+    )
+}
